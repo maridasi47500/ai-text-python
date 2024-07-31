@@ -1,4 +1,6 @@
-# my-every-day-life
--is there
-# my-every-day-life
-# my-every-day-life
+# ai transformer 
+- lancer
+````
+python addscript
+````
+# ai-text-python
