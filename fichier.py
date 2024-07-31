@@ -1,4 +1,5 @@
 import os
+import json
 class Fichier:
   def __init__(self,path,name):
     self.path=path
@@ -25,3 +26,12 @@ class Fichier:
     hey=open((self.path+"/"+self.name),"w")
     hey.write(mycontent)
     hey.close()
+  def ecrirejson(self,data):
+    with open((self.path+"/"+self.name), 'w') as json_file:
+       json.dump(data, json_file, indent=4)
+  def lirejson(self):
+    original_json=None
+    with open((self.path+"/"+self.name), mode="r", encoding="utf-8") as input_file:
+       original_json = input_file.read()
+    return original_json
+
