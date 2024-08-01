@@ -33,7 +33,6 @@ from transformers import AutoModelForSequenceClassification, TrainingArguments, 
 from transformers import pipeline
 class Transformer1():
     def __init__(self,modelname="distilbert/distilbert-base-uncased"):
-        self.modelname=modelname
         self.tokenizer = AutoTokenizer.from_pretrained(self.modelname)
         self.imdb=Fichier("./welcome","transformer1.json").lirejson()
     def preprocess_function(self,exemples):
@@ -129,7 +128,6 @@ from transformers import AutoModelForTokenClassification, TrainingArguments, Tra
 from transformers import pipeline
 class Transformer2():
     def __init__(self,modelname="distilbert/distilbert-base-uncased"):
-        self.modelname=modelname
         self.tokenizer = AutoTokenizer.from_pretrained(self.modelname)
         self.wnut=Fichier("./welcome","transformer2.json").lirejson()["list"]
         self.exemple=Fichier("./welcome","transformer2.json").lirejson()["list"][0]
@@ -241,7 +239,6 @@ from transformers import DefaultDataCollator
 from transformers import AutoModelForQuestionAnswering, TrainingArguments, Trainer
 class Transformer3():
     def __init__(self,modelname="distilbert/distilbert-base-uncased"):
-        self.modelname=modelname
         self.tokenizer = AutoTokenizer.from_pretrained(self.modelname)
         self.squad=Fichier("./welcome","transformer3.json").lirejson()
         
@@ -359,7 +356,6 @@ from transformers import AutoModelForCausalLM, TrainingArguments, Trainer
 import math
 class Transformer4():
     def __init__(self,modelname="distilbert/distilgpt2"):
-        self.modelname=modelname
         self.tokenizer = AutoTokenizer.from_pretrained(self.modelname)
         self.eli5=Fichier("./welcome","transformer4.json").lirejson()
         self.eli5=self.eli5.flatten()
@@ -437,7 +433,6 @@ from transformers import DefaultDataCollator
 import math
 class Transformer5():
     def __init__(self,modelname="distilbert/distilgpt2"):
-        self.modelname=modelname
         self.tokenizer = AutoTokenizer.from_pretrained(self.modelname)
         self.eli5=Fichier("./welcome","transformer4.json").lirejson()
         self.eli5=self.eli5.flatten()
@@ -513,31 +508,3 @@ print(ai.inference(text))
         )
         squad={"train":x_train, "test":x_test}
         Fichier("./uploads","transformer6.json").ecrirejson(squad)
-        transformer5="""from transformers import AutoTokenizer
-from transformers import DataCollatorForLanguageModeling
-import evaluate
-import numpy as np
-from transformers import AutoModelForMaskedLM
-from transformers import pipeline
-from transformers import DataCollatorForSeq2Seq
-import math
-class Transformer6():
-    def __init__(self,checkpoint="google-t5/t5-small"):
-        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-        self.checkpoint=checkpoint
-        self.source_lang = "en"
-        self.target_lang = "fr"
-        self.prefix = "translate English to French: "
-        self.books=Fichier("./welcome","transformer6.json").lirejson()
-        self.block_size=128
-    def preprocess_function(self,examples):
-        inputs = [prefix + example[source_lang] for example in examples["translation"]]
-        targets = [example[target_lang] for example in examples["translation"]]
-        model_inputs = tokenizer(inputs, text_target=targets, max_length=128, truncation=True)
-        return model_inputs
-    def apply_preprocess_function(self,examples):
-        self.tokenized_books = self.books.map(self.preprocess_function, batched=True)
-    def create_examples(self):
-        self.data_collator = DataCollatorForSeq2Seq(tokenizer=self.tokenizer, model=self.checkpoint)
-        """
-        Fichier("./","transformer6.py").ecrire(transformer6)
