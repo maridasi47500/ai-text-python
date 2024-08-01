@@ -120,7 +120,7 @@ print(myai.inference(text))
             wnut1["ner_tags"]=featurenames
             wnut.append(wnut1)
             Fichier("./uploads","transformer2.json").ecrirejson({"list":wnut})
-            transformer2="""from transformers import AutoTokenizer
+            transformer2= """from transformers import AutoTokenizer
 from transformers import DataCollatorForTokenClassification
 import evaluate
 import numpy as np
@@ -315,11 +315,186 @@ class Transformer3():
         question_answerer = pipeline("question-answering", model="my_awesome_qa_model")
         return question_answerer(question=question, context=context)
 ai=Transformer3()
+ai.apply_preprocess_function()
 ai.create_examples()
 ai.train()
-
 question = "How many programming languages does BLOOM support?"
 context = "BLOOM has 176 billion parameters and can generate text in 46 languages natural languages and 13 programming languages."
 print(ai.inference(question,context))
         """
-        Fichier("./","transformer3.py").ecrire(transformer2)
+        Fichier("./","transformer3.py").ecrire(transformer3)
+        ask=[{'q_id': '7h191n',
+ 'title': 'What does the tax bill that was passed today mean? How will it affect Americans in each tax bracket?',
+ 'selftext': '',
+ 'category': 'Economics',
+ 'subreddit': 'explainlikeimfive',
+ 'answers': {'a_id': ['dqnds8l', 'dqnd1jl', 'dqng3i1', 'dqnku5x'],
+  'text': ["The tax bill is 500 pages long and there were a lot of changes still going on right to the end. It's not just an adjustment to the income tax brackets, it's a whole bunch of changes. As such there is no good answer to your question. The big take aways are: - Big reduction in corporate income tax rate will make large companies very happy. - Pass through rate change will make certain styles of business (law firms, hedge funds) extremely happy - Income tax changes are moderate, and are set to expire (though it's the kind of thing that might just always get re-applied without being made permanent) - People in high tax states (California, New York) lose out, and many of them will end up with their taxes raised.",
+   'None yet. It has to be reconciled with a vastly different house bill and then passed again.',
+   'Also: does this apply to 2017 taxes? Or does it start with 2018 taxes?',
+   'This article explains both the House and senate bills, including the proposed changes to your income taxes based on your income level. URL_0'],
+  'score': [21, 19, 5, 3],
+  'text_urls': [[],
+   [],
+   [],
+   ['https://www.investopedia.com/news/trumps-tax-reform-what-can-be-done/']]},
+ 'title_urls': ['url'],
+ 'selftext_urls': ['url']}]
+        Fichier("./uploads","transformer4.sh").ecrire("pip3 install transformers datasets evaluate")
+        x_train, x_test, y_train, y_test = train_test_split(
+            ask, ask, test_size=0.4, random_state=0
+        )
+        squad={"train":x_train, "test":x_test}
+        Fichier("./uploads","transformer4.json").ecrirejson(squad)
+        transformer4="""from transformers import AutoTokenizer
+from transformers import DataCollatorForLanguageModeling
+import evaluate
+import numpy as np
+from transformers import pipeline
+from transformers import DefaultDataCollator
+from transformers import AutoModelForCausalLM, TrainingArguments, Trainer
+import math
+class Transformer4():
+    def __init__(self,modelname="distilbert/distilgpt2"):
+        self.tokenizer = AutoTokenizer.from_pretrained(self.modelname)
+        self.eli5=Fichier("./welcome","transformer4.json").lirejson()
+        self.eli5=self.eli5.flatten()
+        self.block_size = 128
+    def preprocess_function(self,examples):
+        return tokenizer([" ".join(x) for x in examples["answers.text"]])
+    def apply_preprocess_function(self):
+        self.tokenized_eli5 = self.eli5.map(
+            preprocess_function,
+            batched=True,
+            num_proc=4,
+            remove_columns=self.eli5["train"][0].keys(),
+        )
+    def group_texts(self,examples):
+        # Concatenate all texts.
+        concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
+        total_length = len(concatenated_examples[list(examples.keys())[0]])
+        # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+        # customize this part to your needs.
+        if total_length >= self.block_size:
+            total_length = (total_length // self.block_size) * self.block_size
+        # Split by chunks of block_size.
+        result = {
+            k: [t[i : i + self.block_size] for i in range(0, total_length, self.block_size)]
+            for k, t in concatenated_examples.items()
+        }
+        result["labels"] = result["input_ids"].copy()
+        return result
+    def apply_group_texts_function(self,examples):
+        self.lm_dataset = self.tokenized_eli5.map(self.group_texts, batched=True, num_proc=4)
+    def create_examples(self):
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.data_collator = DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False)
+    def train(self):
+        self.model = AutoModelForCausalLM.from_pretrained(self.modelname)
+        training_args = TrainingArguments(
+            output_dir="my_awesome_eli5_clm-model",
+            eval_strategy="epoch",
+            learning_rate=2e-5,
+            weight_decay=0.01,
+            push_to_hub=True,
+        )
+        self.trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=self.lm_dataset["train"],
+            eval_dataset=self.lm_dataset["test"],
+            data_collator=self.data_collator,
+        )
+        self.trainer.train()
+    def evaluate(self):
+        eval_results = self.trainer.evaluate()
+        print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
+    def inference(self,prompt):
+        generator = pipeline("text-generation", model="my_awesome_eli5_clm-model")
+        return generator(prompt)
+ai=Transformer4() 
+ai.apply_preprocess_function()
+ai.apply_group_texts_function()
+ai.create_examples()
+ai.train()
+ai.evaluate()
+prompt = "Somatic hypermutation allows the immune system to"
+print(ai.inference(prompt)
+    
+        """
+        Fichier("./","transformer4.py").ecrire(transformer4)
+        transformer5="""from transformers import AutoTokenizer
+from transformers import DataCollatorForLanguageModeling
+import evaluate
+import numpy as np
+from transformers import AutoModelForMaskedLM
+from transformers import pipeline
+from transformers import DefaultDataCollator
+import math
+class Transformer5():
+    def __init__(self,modelname="distilbert/distilgpt2"):
+        self.tokenizer = AutoTokenizer.from_pretrained(self.modelname)
+        self.eli5=Fichier("./welcome","transformer4.json").lirejson()
+        self.eli5=self.eli5.flatten()
+        self.block_size=128
+    def preprocess_function(self,examples):
+        return self.tokenizer([" ".join(x) for x in examples["answers.text"]])
+    def apply_preprocess_function(self):
+        self.tokenized_eli5 = self.eli5.map(
+            self.preprocess_function,
+            batched=True,
+            num_proc=4,
+            remove_columns=self.eli5["train"][0].keys(),
+        )
+    def group_texts(examples):
+        # Concatenate all texts.
+        concatenated_examples = {k: sum(examples[k], []) for k in examples.keys()}
+        total_length = len(concatenated_examples[list(examples.keys())[0]])
+        # We drop the small remainder, we could add padding if the model supported it instead of this drop, you can
+        # customize this part to your needs.
+        if total_length >= self.block_size:
+            total_length = (total_length // self.block_size) * self.block_size
+        # Split by chunks of block_size.
+        result = {
+            k: [t[i : i + self.block_size] for i in range(0, total_length, self.block_size)]
+            for k, t in concatenated_examples.items()
+        }
+        return result
+    def apply_group_texts_function(self):
+        self.lm_dataset = self.tokenized_eli5.map(self.group_texts, batched=True, num_proc=4)
+    def create_examples(self):
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.data_collator = DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm_probability=0.15)
+    def train(self):
+        model = AutoModelForMaskedLM.from_pretrained(self.modelname)
+        training_args = TrainingArguments(
+            output_dir="my_awesome_eli5_mlm_model",
+            eval_strategy="epoch",
+            learning_rate=2e-5,
+            num_train_epochs=3,
+            weight_decay=0.01,
+            push_to_hub=True,
+        )
+        self.trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=self.lm_dataset["train"],
+            eval_dataset=self.lm_dataset["test"],
+            data_collator=self.data_collator,
+        )
+        self.trainer.train()
+    def evaluate(self):
+        eval_results = self.trainer.evaluate()
+        print(f"Perplexity: {math.exp(eval_results['eval_loss']):.2f}")
+    def inference(self,text):
+        mask_filler = pipeline("fill-mask", "my_awesome_eli5_mlm_model")
+        return mask_filler(text, top_k=3)
+ai=Transformer5()
+ai.apply_preprocess_function()
+ai.apply_group_texts_function()
+ai.create_examples()
+ai.train()
+ai.evaluate()
+text = "The Milky Way is a <mask> galaxy."
+print(ai.inference(text))
+        """
