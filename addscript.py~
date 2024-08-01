@@ -315,7 +315,6 @@ class Transformer3():
         question_answerer = pipeline("question-answering", model="my_awesome_qa_model")
         return question_answerer(question=question, context=context)
 ai=Transformer3()
-ai.apply_preprocess_function()
 ai.create_examples()
 ai.train()
 
