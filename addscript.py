@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from fichier import Fichier
 from pics import Pics
 from somescaffold import Scaffold
+import scacy
 import json
 
 class Addscript():
@@ -90,3 +91,99 @@ print(myai.inference(text))
 
 
             """
+            Fichier("./","transformer1.py").ecrire(transformer1)
+            Fichier("./uploads","transformer2.sh").ecrire("pip3 install transformers datasets evaluate seqeval")
+            text1=""
+            nlp=spacy.load("en_core_web_sm")
+            mysentence=("Microsoft Corporation is a multinational technology with headquarters in Redmond")
+            wnut=[]
+
+            doc=nlp(mysentence)
+            tokens=mysentence.replace("'"," '").split(" ")
+            featurenames=[]
+            mystr=""
+
+            i=0
+            for x in tokens:
+                begin1=False
+                inside1=False
+                mystr=""
+                for ent in doc.ents:
+                   print(ent.text+" -- "+ent.label_+spacy.explain(ent.label_)+"--"+ent.start_char+"--"+ent.end_char+"--")
+                   if i == ent.start_char:
+                       mystr+="B-"+ent.label_
+                       begin1=True
+                       continue
+                   elif i < ent.start_char && i <= ent.end_char:
+                       mystr+="-"+ent.label_
+                       inside1=True
+                       continue
+                if not begin1 and not inside1:
+                   mystr="0"
+                featurenames.append(mystr)
+                i+=1
+            wnut1["ner_tags"]=featurenames
+            wnut.append(wnut1)
+            Fichier("./uploads","transformer2.json").ecrirejson({"list":wnut})
+            transformer2="""from transformers import AutoTokenizer
+from transformers import DataCollatorForTokenClassification
+import evaluate
+import numpy as np
+
+
+class Transformer2():
+    def __init__(self,modelname="distilbert/distilbert-base-uncased"):
+        self.tokenizer = AutoTokenizer.from_pretrained(self.modelname)
+        self.wnut=Fichier("./welcome","transformer2.json").lirejson()["list"]
+        self.exemple=Fichier("./welcome","transformer2.json").lirejson()["list"][0]
+        self.tokenized_input = self.tokenizer(self.example["tokens"], is_split_into_words=True)
+        self.labels = [label_list[i] for i in self.exemple[f"ner_tags"]]
+
+        self.tokens= self.tokenizer.convert_ids_to_tokens(self.tokenized_input["input_ids"])
+    def tokenize_and_align_labels(self,examples):
+        tokenized_inputs = tokenizer(examples["tokens"], truncation=True, is_split_into_words=True)
+        labels = []
+        for i, label in enumerate(self.exemple["ner_tags"]):
+            word_ids = self.tokenized_inputs.word_ids(batch_index=i)  # Map tokens to their respective word.
+            previous_word_idx = None
+            label_ids = []
+            for word_idx in word_ids:  # Set the special tokens to -100.
+                if word_idx is None:
+                    label_ids.append(-100)
+                elif word_idx != previous_word_idx:  # Only label the first token of a given word.
+                    label_ids.append(label[word_idx])
+                else:
+                    label_ids.append(-100)
+                previous_word_idx = word_idx
+            labels.append(label_ids)
+        tokenized_inputs["labels"] = labels
+        return tokenized_inputs
+    def preprocess_function(self):
+        self.tokenized_wnut = self.wnut.map(self.tokenize_and_align_labels, batched=True)
+    def create_example(self,examples):
+        self.data_collator = DataCollatorForTokenClassification(tokenizer=self.tokenizer)
+    def evaluate(self,examples):
+        self.seqeval = evaluate.load("seqeval")
+    def compute_metrics(p):
+        predictions, labels = p
+        predictions = np.argmax(predictions, axis=2)
+        true_predictions = [
+            [label_list[p] for (p, l) in zip(prediction, label) if l != -100]
+            for prediction, label in zip(predictions, labels)
+        ]
+        true_labels = [
+            [label_list[l] for (p, l) in zip(prediction, label) if l != -100]
+            for prediction, label in zip(predictions, labels)
+        ]
+        results = seqeval.compute(predictions=true_predictions, references=true_labels)
+        return {
+            "precision": results["overall_precision"],
+            "recall": results["overall_recall"],
+            "f1": results["overall_f1"],
+            "accuracy": results["overall_accuracy"],
+        }
+        
+
+
+
+
