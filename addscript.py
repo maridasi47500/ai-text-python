@@ -513,8 +513,9 @@ print(ai.inference(text))
         )
         squad={"train":x_train, "test":x_test}
         Fichier("./uploads","transformer6.json").ecrirejson(squad)
-        transformer5="""from transformers import AutoTokenizer
+        transformer6="""from transformers import AutoTokenizer
 from transformers import DataCollatorForLanguageModeling
+from transformers import AutoModelForSeq2SeqLM, Seq2SeqTrainingArguments, Seq2SeqTrainer
 import evaluate
 import numpy as np
 from transformers import AutoModelForMaskedLM
@@ -539,5 +540,132 @@ class Transformer6():
         self.tokenized_books = self.books.map(self.preprocess_function, batched=True)
     def create_examples(self):
         self.data_collator = DataCollatorForSeq2Seq(tokenizer=self.tokenizer, model=self.checkpoint)
+    def evaluate(self):
+        self.metric = evaluate.load("sacrebleu")
+    def postprocess_text(self,preds, labels):
+        preds = [pred.strip() for pred in preds]
+        labels = [[label.strip()] for label in labels]
+        return preds, labels
+    def compute_metrics(self,eval_preds):
+        preds, labels = eval_preds
+        if isinstance(preds, tuple):
+            preds = preds[0]
+        decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=True)
+        labels = np.where(labels != -100, labels, self.tokenizer.pad_token_id)
+        decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=True)
+        decoded_preds, decoded_labels = self.postprocess_text(decoded_preds, decoded_labels)
+        result = self.metric.compute(predictions=decoded_preds, references=decoded_labels)
+        result = {"bleu": result["score"]}
+        prediction_lens = [np.count_nonzero(pred != self.tokenizer.pad_token_id) for pred in preds]
+        result["gen_len"] = np.mean(prediction_lens)
+        result = {k: round(v, 4) for k, v in result.items()}
+        return result
+    def train(self):
+        model = AutoModelForSeq2SeqLM.from_pretrained(self.checkpoint)
+        training_args = Seq2SeqTrainingArguments(
+            output_dir="my_awesome_opus_books_model",
+            eval_strategy="epoch",
+            learning_rate=2e-5,
+            per_device_train_batch_size=16,
+            per_device_eval_batch_size=16,
+            weight_decay=0.01,
+            save_total_limit=3,
+            num_train_epochs=2,
+            predict_with_generate=True,
+            fp16=True,
+            push_to_hub=True,
+        )
+        trainer = Seq2SeqTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=self.tokenized_books["train"],
+            eval_dataset=self.tokenized_books["test"],
+            tokenizer=self.tokenizer,
+            data_collator=self.data_collator,
+            compute_metrics=self.compute_metrics,
+        )
+        trainer.train()
+    def inference(self,text):
+        translator = pipeline("translation_"+self.source_lang+"_to_"+self.target_lang, model="my_awesome_opus_books_model")
+        return translator(text)
+ai = Transformer6()
+ai.apply_preprocess_function()
+ai.create_examples()
+ai.evaluate()
+ai.train()
+text = "translate English to French: Legumes share resources with nitrogen-fixing bacteria."
+print(ai.inference(text))
+            """
+       Fichier("./","transformer6.py").ecrire(transformer6)
+       Fichier("./uploads","transformer7.sh").ecrire("pip3 install transformers datasets evaluate rouge_score")
+       billsum=[{'summary': 'Existing law authorizes state agencies to enter into contracts for the acquisition of goods or services upon approval by the Department of General Services. Existing law sets forth various requirements and prohibitions for those contracts, including, but not limited to, a prohibition on entering into contracts for the acquisition of goods or services of $100,000 or more with a contractor that discriminates between spouses and domestic partners or same-sex and different-sex couples in the provision of benefits. Existing law provides that a contract entered into in violation of those requirements and prohibitions is void and authorizes the state or any person acting on behalf of the state to bring a civil action seeking a determination that a contract is in violation and therefore void. Under existing law, a willful violation of those requirements and prohibitions is a misdemeanor.\nThis bill would also prohibit a state agency from entering into contracts for the acquisition of goods or services of $100,000 or more with a contractor that discriminates between employees on the basis of gender identity in the provision of benefits, as specified. By expanding the scope of a crime, this bill would impose a state-mandated local program.\nThe California Constitution requires the state to reimburse local agencies and school districts for certain costs mandated by the state. Statutory provisions establish procedures for making that reimbursement.\nThis bill would provide that no reimbursement is required by this act for a specified reason.',
+ 'text': 'The people of the State of California do enact as follows:\n\n\nSECTION 1.\nSection 10295.35 is added to the Public Contract Code, to read:\n10295.35.\n(a) (1) Notwithstanding any other law, a state agency shall not enter into any contract for the acquisition of goods or services in the amount of one hundred thousand dollars ($100,000) or more with a contractor that, in the provision of benefits, discriminates between employees on the basis of an employee’s or dependent’s actual or perceived gender identity, including, but not limited to, the employee’s or dependent’s identification as transgender.\n(2) For purposes of this section, “contract” includes contracts with a cumulative amount of one hundred thousand dollars ($100,000) or more per contractor in each fiscal year.\n(3) For purposes of this section, an employee health plan is discriminatory if the plan is not consistent with Section 1365.5 of the Health and Safety Code and Section 10140 of the Insurance Code.\n(4) The requirements of this section shall apply only to those portions of a contractor’s operations that occur under any of the following conditions:\n(A) Within the state.\n(B) On real property outside the state if the property is owned by the state or if the state has a right to occupy the property, and if the contractor’s presence at that location is connected to a contract with the state.\n(C) Elsewhere in the United States where work related to a state contract is being performed.\n(b) Contractors shall treat as confidential, to the maximum extent allowed by law or by the requirement of the contractor’s insurance provider, any request by an employee or applicant for employment benefits or any documentation of eligibility for benefits submitted by an employee or applicant for employment.\n(c) After taking all reasonable measures to find a contractor that complies with this section, as determined by the state agency, the requirements of this section may be waived under any of the following circumstances:\n(1) There is only one prospective contractor willing to enter into a specific contract with the state agency.\n(2) The contract is necessary to respond to an emergency, as determined by the state agency, that endangers the public health, welfare, or safety, or the contract is necessary for the provision of essential services, and no entity that complies with the requirements of this section capable of responding to the emergency is immediately available.\n(3) The requirements of this section violate, or are inconsistent with, the terms or conditions of a grant, subvention, or agreement, if the agency has made a good faith attempt to change the terms or conditions of any grant, subvention, or agreement to authorize application of this section.\n(4) The contractor is providing wholesale or bulk water, power, or natural gas, the conveyance or transmission of the same, or ancillary services, as required for ensuring reliable services in accordance with good utility practice, if the purchase of the same cannot practically be accomplished through the standard competitive bidding procedures and the contractor is not providing direct retail services to end users.\n(d) (1) A contractor shall not be deemed to discriminate in the provision of benefits if the contractor, in providing the benefits, pays the actual costs incurred in obtaining the benefit.\n(2) If a contractor is unable to provide a certain benefit, despite taking reasonable measures to do so, the contractor shall not be deemed to discriminate in the provision of benefits.\n(e) (1) Every contract subject to this chapter shall contain a statement by which the contractor certifies that the contractor is in compliance with this section.\n(2) The department or other contracting agency shall enforce this section pursuant to its existing enforcement powers.\n(3) (A) If a contractor falsely certifies that it is in compliance with this section, the contract with that contractor shall be subject to Article 9 (commencing with Section 10420), unless, within a time period specified by the department or other contracting agency, the contractor provides to the department or agency proof that it has complied, or is in the process of complying, with this section.\n(B) The application of the remedies or penalties contained in Article 9 (commencing with Section 10420) to a contract subject to this chapter shall not preclude the application of any existing remedies otherwise available to the department or other contracting agency under its existing enforcement powers.\n(f) Nothing in this section is intended to regulate the contracting practices of any local jurisdiction.\n(g) This section shall be construed so as not to conflict with applicable federal laws, rules, or regulations. In the event that a court or agency of competent jurisdiction holds that federal law, rule, or regulation invalidates any clause, sentence, paragraph, or section of this code or the application thereof to any person or circumstances, it is the intent of the state that the court or agency sever that clause, sentence, paragraph, or section so that the remainder of this section shall remain in effect.\nSEC. 2.\nSection 10295.35 of the Public Contract Code shall not be construed to create any new enforcement authority or responsibility in the Department of General Services or any other contracting agency.\nSEC. 3.\nNo reimbursement is required by this act pursuant to Section 6 of Article XIII\u2009B of the California Constitution because the only costs that may be incurred by a local agency or school district will be incurred because this act creates a new crime or infraction, eliminates a crime or infraction, or changes the penalty for a crime or infraction, within the meaning of Section 17556 of the Government Code, or changes the definition of a crime within the meaning of Section 6 of Article XIII\u2009B of the California Constitution.',
+ 'title': 'An act to add Section 10295.35 to the Public Contract Code, relating to public contracts.'}]
+        x_train, x_test, y_train, y_test = train_test_split(
+            billsum, billsum, test_size=0.2, random_state=0
+        )
+        squad={"train":x_train, "test":x_test}
+        Fichier("./uploads","transformer7.json").ecrirejson(squad)
+        transformer7="""from transformers import AutoTokenizer
+from transformers import DataCollatorForLanguageModeling
+from transformers import AutoModelForSeq2SeqLM, Seq2SeqTrainingArguments, Seq2SeqTrainer
+import evaluate
+import numpy as np
+from transformers import AutoModelForMaskedLM
+from transformers import pipeline
+from transformers import DataCollatorForSeq2Seq
+import math
+class Transformer7():
+    def __init__(self,checkpoint="google-t5/t5-small"):
+        self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+        self.checkpoint=checkpoint
+        self.prefix = "summary: "
+        self.billsum=Fichier("./welcome","transformer7.json").lirejson()
+        self.block_size=128
+    def preprocess_function(self,examples):
+        inputs = [self.prefix + doc for doc in examples["text"]]
+        model_inputs = tokenizer(inputs, max_length=1024, truncation=True)
+        labels = tokenizer(text_target=examples["summary"], max_length=128, truncation=True)
+        model_inputs["labels"] = labels["input_ids"]
+        return model_inputs
+    def apply_preprocess_function(self,examples):
+        self.tokenized_billsum = self.billsum.map(self.preprocess_function, batched=True)
+    def create_examples(self):
+        self.data_collator = datacollatorforseq2seq(tokenizer=self.tokenizer, model=self.checkpoint)
+    def train(self):
+        model = AutoModelForSeq2SeqLM.from_pretrained(self.checkpoint) 
+        training_args = Seq2SeqTrainingArguments(
+            output_dir="my_awesome_billsum_model",
+            eval_strategy="epoch",
+            learning_rate=2e-5,
+            per_device_train_batch_size=16,
+            per_device_eval_batch_size=16,
+            weight_decay=0.01,
+            save_total_limit=3,
+            num_train_epochs=4,
+            predict_with_generate=True,
+            fp16=True,
+            push_to_hub=True,
+        )
+        trainer = Seq2SeqTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=self.tokenized_billsum["train"],
+            eval_dataset=self.tokenized_billsum["test"],
+            tokenizer=self.tokenizer,
+            data_collator=self.data_collator,
+            compute_metrics=self.compute_metrics,
+        )
+        trainer.train()
+    def inference(self,text):
+        summarizer = pipeline("summarization", model="stevhliu/my_awesome_billsum_model")
+        return summarizer(text)
+ai=Transformer7()
+ai.apply_preprocess_function()
+ai.create_examples()
+ai.train()
+text = "summarize: The Inflation Reduction Act lowers prescription drug costs, health care costs, and energy costs. It's the most aggressive action on tackling the climate crisis in American history, which will lift up American workers and create good-paying, union jobs across the country. It'll lower the deficit and ask the ultra-wealthy and corporations to pay their fair share. And no one making under $400,000 per year will pay a penny more in taxes."
+print(ai.inference(text))
+
+
         """
-        Fichier("./","transformer6.py").ecrire(transformer6)

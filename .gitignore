@@ -1,6 +1,14 @@
 uploads/*
+my_awesome_opus_books_model/*
+my_awesome_model/*
+my_awesome_wnut_model/*
+my_awesome_qa_model/*
+my_awesome_eli5_clm-model/*
+my_awesome_eli5_mlm_model/*
+my_awesome_model/*
 __pycache__/*
 **egg-info**
 Xterm**
+transformer**
 mail_dir/
 lancer**.sh
